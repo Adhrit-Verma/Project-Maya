@@ -2,13 +2,14 @@ import os
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 import logging
+import platform
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')  # Load the secret key
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
 # Configure logging for better security monitoring
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +30,7 @@ def set_security_headers(response):
 def home():
     return "Welcome to Project Maya! This project is a work in progress."
 
-# Secure command execution with a whitelist
+# Enhanced secure command execution
 @app.route("/execute", methods=["POST"])
 def execute_command():
     try:
@@ -37,14 +38,35 @@ def execute_command():
         command = request.json.get("command", "")
         if not command:
             return jsonify({"error": "No command provided"}), 400
-        
-        # Whitelist: Only allow predefined safe commands
-        allowed_commands = ["ls", "pwd"]  # Customize this list as needed
+
+        # Safe commands whitelist
+        if platform.system() == "Windows":
+            allowed_commands = {
+                "list_files": "dir",
+                "current_directory": "cd",
+                "system_info": "systeminfo",
+                "disk_usage": "wmic logicaldisk get size,freespace,caption",
+                "cpu_usage": "wmic cpu get loadpercentage",
+                "network_status": "ipconfig",
+                "ping_google": "ping google.com"
+            }
+        else:  # Linux/macOS
+            allowed_commands = {
+                "list_files": "ls",
+                "current_directory": "pwd",
+                "system_info": "uname -a",
+                "disk_usage": "df -h",
+                "cpu_usage": "top -bn1 | grep 'Cpu'",
+                "network_status": "ifconfig",
+                "ping_google": "ping -c 4 google.com"
+            }
+
+        # Check if the command is in the whitelist
         if command not in allowed_commands:
             return jsonify({"error": "Command not allowed"}), 403
-        
-        # Execute command safely
-        output = os.popen(command).read()
+
+        # Execute the whitelisted command
+        output = os.popen(allowed_commands[command]).read()
         return jsonify({"output": output})
     
     except Exception as e:
