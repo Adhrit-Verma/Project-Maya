@@ -73,6 +73,7 @@ def execute_command():
         logger.error(f"Error executing command: {e}")
         return jsonify({"error": "Internal Server Error"}), 500
 
+
 # Start the app using secure configuration
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)
